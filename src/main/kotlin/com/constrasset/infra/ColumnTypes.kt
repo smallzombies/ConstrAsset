@@ -29,6 +29,22 @@ class TimestamptzColumnType : org.jetbrains.exposed.sql.ColumnType<Instant>() {
 
 }
 
+/** JSONB 列（§8 operation_logs.metadata），值以 JSON 字符串形式读写。 */
+fun Table.jsonb(name: String): Column<String> = registerColumn(name, PgJsonbColumnType())
+
+class PgJsonbColumnType : org.jetbrains.exposed.sql.ColumnType<String>() {
+    override fun sqlType(): String = "JSONB"
+
+    override fun nonNullValueToString(value: String): String =
+        "'" + value.replace("'", "''") + "'::jsonb"
+
+    override fun valueFromDB(value: Any): String = when (value) {
+        is String -> value
+        is java.sql.SQLXML -> value.toString() // 驱动实现通常返回 XML/JSON 文本
+        else -> value.toString() // PGobject.toJson() 等驱动包装
+    }
+}
+
 /** TEXT[] 列，用于 org_roles.permissions / project_roles.permissions（§2.1/§2.2） */
 fun Table.textArray(name: String): Column<List<String>> = registerColumn(name, PgTextArrayColumnType())
 

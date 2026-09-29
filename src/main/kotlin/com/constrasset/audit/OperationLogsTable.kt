@@ -1,5 +1,6 @@
 package com.constrasset.audit
 
+import com.constrasset.infra.jsonb
 import com.constrasset.infra.timestamptz
 import org.jetbrains.exposed.sql.Table
 
@@ -16,7 +17,7 @@ object OperationLogs : Table("operation_logs") {
     val targetType = varchar("target_type", 20).nullable()     // USER/PROJECT/FILE/TAG
     val targetId = long("target_id").nullable()
     val ipAddress = varchar("ip_address", 45)                  // IPv6 最大45字符
-    val metadata = text("metadata").nullable()                 // JSONB（DDL中 ALTER 为 jsonb）
+    val metadata = jsonb("metadata").nullable()                // JSONB（§8）
     val createdAt = timestamptz("created_at").clientDefault { java.time.Instant.now() }
 
     override val primaryKey = PrimaryKey(id)

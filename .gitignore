@@ -1,18 +1,5 @@
-# Build and compiled files
-build/
-*.class
-*.jar
-*.war
-
-# Gradle specific
+# Gradle
 .gradle/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-# IDE files
-.idea/
-*.iml
-*.iws
-*.ipr
-out/
+# Build outputs
+build/

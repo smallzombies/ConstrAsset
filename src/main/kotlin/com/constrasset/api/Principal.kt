@@ -1,0 +1,58 @@
+package com.constrasset.api
+
+import com.constrasset.auth.JwtService
+import com.constrasset.common.BusinessException
+import io.ktor.server.application.ApplicationCall
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.transactions.transaction
+
+/**
+ * 认证中间件解析 Access Token 后挂载到 call 上的主体信息（§2.3 / Note #7）。
+ */
+data class Principal(
+    val claims: JwtService.Claims,
+) {
+    val userId: Long get() = claims.userId
+    val isGuest: Boolean get() = claims.isGuest
+    val isSuperAdmin: Boolean get() = claims.orgRoleName == "SUPER_ADMIN"
+
+    /** 组织级权限：实时查库（角色权限可被 ROLE_EDIT_PERMISSION 修改，不能只信Token快照） */
+    fun hasOrgPerm(perm: String): Boolean {
+        if (isSuperAdmin) return true
+        if (isGuest) return false // §1.2：临时访客无平台菜单权限
+        return transaction {
+            (com.constrasset.auth.Users innerJoin com.constrasset.rbac.OrgRoles)
+                .selectAll()
+                .where {
+                    SqlExpressionBuilder.run {
+                        (com.constrasset.auth.Users.id eq userId) and
+                            (com.constrasset.rbac.OrgRoles.permissions containsArrayOf perm)
+                    }
+                }.count() > 0
+        }
+    }
+
+    companion object {
+        const val CALL_KEY = "auth.principal"
+    }
+}
+
+fun ApplicationCall.requirePrincipal(): Principal =
+    attributes.getOrNull(Principal.CALL_KEY) as? Principal
+        ?: throw BusinessException("未认证", httpStatus = 401, bizCode = 2005)
+
+/** Exposed 对 PostgreSQL TEXT[] 的 `@>` 包含判断（单元素）。 */
+infix fun <T : Any> org.jetbrains.exposed.sql.arrayvergences.ArrayColumnType<T>.containsArrayOf(
+    element: T,
+): Op<Boolean> = ArrayContainsOp(this, element)
+
+private class ArrayContainsOp<T>(
+    private val column: org.jetbrains.exposed.sql.arrayvergences.ArrayColumnType<T>,
+    private val element: T,
+) : Op<Boolean>() {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder {
+        append(column, " @> ARRAY[")
+        registerColumnParam(column, element)
+        append("]::text[]")
+    }
+}

@@ -134,7 +134,7 @@ class RecycleBinRepository {
  * §7.2 还原冲突处理 + §7.3 二次删除/清空。
  */
 class RecycleBinService(
-    private val repo: RecycleBinRepository,
+    val repo: RecycleBinRepository,
     private val projects: ProjectRepository,
     private val files: FileRepository,
     private val minio: MinioStorage,

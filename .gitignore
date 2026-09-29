@@ -3,3 +3,10 @@
 
 # Build outputs
 build/
+# OS/editor
+.DS_Store
+*.swp
+
+# IDE
+.idea/
+*.iml

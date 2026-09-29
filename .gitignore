@@ -1,0 +1,5 @@
+# Gradle build cache
+.gradle/
+
+# Kotlin build artifacts
+build/

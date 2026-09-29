@@ -1,5 +1,18 @@
-# Gradle build cache
-.gradle/
-
-# Kotlin build artifacts
+# Build and compiled files
 build/
+*.class
+*.jar
+*.war
+
+# Gradle specific
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+out/

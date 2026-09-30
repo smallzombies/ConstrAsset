@@ -1,7 +1,5 @@
-# Gradle build artifacts and caches
+# Gradle
 .gradle/
-build/
 
-# IDE files
-.idea/
-*.iml
+# Build artifacts
+build/

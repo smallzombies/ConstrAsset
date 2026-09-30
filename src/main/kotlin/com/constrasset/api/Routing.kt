@@ -27,7 +27,7 @@ import io.ktor.server.request.header
 import io.ktor.server.request.receive
 import io.ktor.server.request.path
 import io.ktor.server.request.receiveMultipart
-import io.ktor.http.content.MultipartData
+import io.ktor.server.routing.Route
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -41,11 +41,22 @@ import io.ktor.utils.io.charsets.Charsets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import java.io.ByteArrayOutputStream
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
 
-/** Swagger UI（ktor-server-swagger 3.0.3：io.ktor.server.plugins.swagger.swaggerUI） */
-private fun io.ktor.server.routing.Route.swaggerDocs(path: String, url: String) {
-    io.ktor.server.plugins.swagger.swaggerUI(path = path, url = url)
+/** Swagger UI：自托管静态 HTML（引用 CDN swagger-ui），零插件 API 依赖 */
+private fun Route.swaggerDocs(path: String, url: String) {
+    get(path) {
+        call.respondText(
+            """<!DOCTYPE html><html><head><title>API Docs</title>
+<meta charset="utf-8"/><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"/></head>
+<body><div id="swagger-ui"></div>
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>window.onload=()=>SwaggerUIBundle({url:"$url",dom_id:"#swagger-ui"});</script>
+</body></html>""",
+            contentType = ContentType.Text.Html.withCharset(Charsets.UTF_8),
+        )
+    }
 }
 
 /** JSON 序列化全局配置（Global Constraint：kotlinx.serialization，禁止Jackson/Gson） */
@@ -219,14 +230,16 @@ fun Application.apiModule(handlers: RouteHandlers) {
                     val items = withContext(Dispatchers.IO) {
                         val mp = call.receiveMultipart()
                         val list = ArrayList<FileService.UploadItem>()
-                        mp.forEachPart { part ->
+                        // Ktor 3.x: MultiPartData 仅剩 readPart(): PartData?，手动循环读取全部部件
+                        while (true) {
+                            val part: PartData = mp.readPart() ?: break
                             if (part is PartData.FileItem) {
-                                val bytes = part.provider().use { ins ->
-                                    ByteArrayOutputStream().also { out -> ins.copyTo(out) }.toByteArray()
-                                }
+                                // Ktor 3.x: provider 是属性，返回 ByteReadChannel；用 kotlinx-io Source 全量读取
+                                val channel = part.provider.invoke()
+                                val bytes = channel.readRemaining().readByteArray()
                                 require(bytes.size <= MAX_UPLOAD_BYTES) { "单文件超过 ${MAX_UPLOAD_BYTES / 1024 / 1024}MB 上限" }
                                 list += FileService.UploadItem(
-                                    fileName = part.originalFileName ?: (part.disposition?.name() ?: "unnamed"),
+                                    fileName = part.originalFileName ?: (part.headers["Content-Disposition"]?.substringAfter("filename=", "")?.trim('"') ?: "unnamed"),
                                     content = bytes,
                                     mimeType = part.contentType?.toString() ?: "application/octet-stream",
                                 )
@@ -263,37 +276,37 @@ fun Application.apiModule(handlers: RouteHandlers) {
 
         // ================= /files =================
         route("/files/{id}") {
-            val fileId = { call.pathLong("id") }
+
             get("/detail") {
                 val p = call.requirePrincipal()
-                call.respond(call.handlerOk { handlers.fileDetail(p, fileId()) })
+                call.respond(call.handlerOk { handlers.fileDetail(p, call.pathLong("id")) })
             }
             get("/download-url") {
                 val p = call.requirePrincipal()
-                call.respond(call.handlerOk { handlers.downloadUrl(p, fileId()) })
+                call.respond(call.handlerOk { handlers.downloadUrl(p, call.pathLong("id")) })
             }
             put("/tags") {
                 val p = call.requirePrincipal()
                 val req = call.receive<RouteHandlers.SetTagsRequest>()
-                call.respond(call.handlerOk { handlers.setFileTags(p, fileId(), req, call.clientIp()) })
+                call.respond(call.handlerOk { handlers.setFileTags(p, call.pathLong("id"), req, call.clientIp()) })
             }
             post("/approve") {
                 val p = call.requirePrincipal()
                 val req = call.receive<ApprovalService.ApprovalRequest>()
-                call.respond(call.handlerOk { handlers.approve(p, fileId(), req, call.clientIp()) })
+                call.respond(call.handlerOk { handlers.approve(p, call.pathLong("id"), req, call.clientIp()) })
             }
             get("/comments") {
                 val p = call.requirePrincipal()
-                call.respond(call.handlerOk { handlers.listComments(p, fileId()) })
+                call.respond(call.handlerOk { handlers.listComments(p, call.pathLong("id")) })
             }
             post("/comments") {
                 val p = call.requirePrincipal()
                 val req = call.receive<ApprovalService.CommentRequest>()
-                call.respond(call.handlerOk { handlers.addComment(p, fileId(), req, call.clientIp()) })
+                call.respond(call.handlerOk { handlers.addComment(p, call.pathLong("id"), req, call.clientIp()) })
             }
             delete {
                 val p = call.requirePrincipal()
-                call.respond(call.handlerOk { handlers.deleteFile(p, fileId(), call.clientIp()) })
+                call.respond(call.handlerOk { handlers.deleteFile(p, call.pathLong("id"), call.clientIp()) })
             }
         }
 

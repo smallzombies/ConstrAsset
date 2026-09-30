@@ -32,27 +32,24 @@ data class Principal(
         }
     }
 
-    companion object {
-        const val CALL_KEY = "auth.principal"
-    }
 }
 
 fun ApplicationCall.requirePrincipal(): Principal =
-    attributes.getOrNull(Principal.CALL_KEY) as? Principal
+    attributes.getOrNull(PrincipalAttr)
         ?: throw BusinessException("未认证", httpStatus = 401, bizCode = 2005)
 
-/** Exposed 对 PostgreSQL TEXT[] 的 `@>` 包含判断（单元素）。 */
-infix fun <T : Any> org.jetbrains.exposed.sql.arrayvergences.ArrayColumnType<T>.containsArrayOf(
-    element: T,
-): Op<Boolean> = ArrayContainsOp(this, element)
+/** Exposed 对 PostgreSQL TEXT[] 的 `@>` 包含判断（单元素，配合 PgTextArrayColumnType）。 */
+infix fun Column<List<String>>.containsArrayOf(element: String): Op<Boolean> =
+    ArrayContainsOp(this, element)
 
-private class ArrayContainsOp<T>(
-    private val column: org.jetbrains.exposed.sql.arrayvergences.ArrayColumnType<T>,
-    private val element: T,
+private class ArrayContainsOp(
+    private val column: Column<List<String>>,
+    private val element: String,
 ) : Op<Boolean>() {
     override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder {
-        append(column, " @> ARRAY[")
-        registerColumnParam(column, element)
-        append("]::text[]")
+        // 参数以数组字面量文本形式绑定，PG 侧显式 cast 为 text[]
+        append(column.table, ".", column)
+        append(" @> ?::text[]")
+        registerArgument(column, listOf(element))
     }
 }

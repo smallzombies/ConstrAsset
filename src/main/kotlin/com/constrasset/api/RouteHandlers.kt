@@ -300,7 +300,7 @@ class RouteHandlers(
     fun logs(principal: Principal, page: Int, pageSize: Int, action: String?): ApiResponse<Page<LogView>> {
         requireOrgPerm(principal, OrgPermissions.LOG_READ)
         val p = page.coerceAtLeast(1); val ps = pageSize.coerceIn(1, 100)
-        return transaction<Page<LogView>> {
+        val page = transaction {
             val base = OperationLogs.selectAll()
             val filtered = if (action.isNullOrBlank()) base
             else base.where { SqlExpressionBuilder.run { OperationLogs.action eq action } }
@@ -312,8 +312,9 @@ class RouteHandlers(
                         it[OperationLogs.projectId], it[OperationLogs.targetType], it[OperationLogs.targetId],
                         it[OperationLogs.ipAddress], it[OperationLogs.createdAt].toString())
                 }
-            ok(Page(rows, total, p, ps))
+            Page(rows, total, p, ps)
         }
+        return ok(page)
     }
 
     // ---------- 内部：§2.3 权限校验 ----------

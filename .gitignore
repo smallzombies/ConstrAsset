@@ -1,12 +1,7 @@
-# Gradle
+# Gradle build artifacts and caches
 .gradle/
-
-# Build outputs
 build/
-# OS/editor
-.DS_Store
-*.swp
 
-# IDE
+# IDE files
 .idea/
 *.iml

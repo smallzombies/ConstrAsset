@@ -1,5 +1,9 @@
-# Gradle
-.gradle/
-
 # Build artifacts
 build/
+
+# Gradle cache and metadata
+.gradle/
+
+# IDE files
+.idea/
+*.iml

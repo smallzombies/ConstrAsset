@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.constrasset.PureUnitTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-30T03:20:07" hostname="c-6abc641b-01ed1602-48ab34bfe092" time="2.169">
+  <properties/>
+  <testcase name="project code regex per spec()" classname="com.constrasset.PureUnitTest" time="0.191"/>
+  <testcase name="tag depth limit 5()" classname="com.constrasset.PureUnitTest" time="0.006"/>
+  <testcase name="username regex accepts valid and rejects invalid()" classname="com.constrasset.PureUnitTest" time="0.001"/>
+  <testcase name="password regex per spec()" classname="com.constrasset.PureUnitTest" time="0.002"/>
+  <testcase name="tag name rule enforces 1-100 chars()" classname="com.constrasset.PureUnitTest" time="0.003"/>
+  <testcase name="argon2id hash verify roundtrip()" classname="com.constrasset.PureUnitTest" time="1.699"/>
+  <testcase name="conflict strategy parsing per header protocol()" classname="com.constrasset.PureUnitTest" time="0.104"/>
+  <testcase name="validator collects all field errors then throws once()" classname="com.constrasset.PureUnitTest" time="0.082"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
